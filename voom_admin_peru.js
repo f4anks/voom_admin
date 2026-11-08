@@ -217,24 +217,16 @@ async function enviarAnuncioGlobal() {
       console.warn("Tabla de anuncios con error:", error.message);
     }
 
-    // 2. Enviar Notificación Push mediante OneSignal con la REST API Key nueva
-    let filtroTags = undefined;
-    if (destinatario === 'pasajeros') {
-      filtroTags = [{ field: "tag", key: "rol", relation: "=", value: "pasajero" }];
-    } else if (destinatario === 'conductores') {
-      filtroTags = [{ field: "tag", key: "rol", relation: "=", value: "conductor" }];
-    }
-
+    // 2. Enviar Notificación Push mediante OneSignal con la clave correcta "key os_v2..."
     await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Basic os_v2_app_tc73dgkrsbgfde5qft73chdz46xsmrzhj6jenx47pypur6doqhfyn3sfg7khpj75zsqpfbxx6tprthtcdppz7ha4l6euc4d2xcf2apy"
+        "Authorization": "key os_v2_app_tc73dgkrsbgfde5qft73chdz46xsmrzhj6jenx47pypur6doqhfyn3sfg7khpj75zsqpfbxx6tprthtcdppz7ha4l6euc4d2xcf2apy"
       },
       body: JSON.stringify({
         app_id: "98bfb199-5190-4c51-93b0-2cffb11c79e7",
-        included_segments: destinatario === 'todos' ? ["All"] : ["Subscribed Users"],
-        filters: filtroTags,
+        included_segments: ["All"],
         headings: { "es": titulo },
         contents: { "es": mensaje }
       })
