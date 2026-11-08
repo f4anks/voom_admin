@@ -208,13 +208,24 @@ async function enviarAnuncioGlobal() {
   statusEl.innerText = "Transmitiendo anuncio...";
 
   try {
-    const { error } = await supabaseClient
+    // 1. Guardar en la base de datos (para app abierta en tiempo real)
+    const { error: dbError } = await supabaseClient
       .from('anuncios')
       .insert([{ titulo, mensaje, destinatario, created_at: new Date() }]);
 
-    if (error) {
-      throw error;
-    }
+    if (dbError) throw dbError;
+
+    // 2. Invocar tu Edge Function para enviar la push a través de OneSignal (app cerrada)
+    const response = await fetch('https://gklquvthucityzgcamao.supabase.co/functions/v1/enviar-push', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ titulo, mensaje, destinatario })
+    });
+
+    const resultado = await response.json();
+    console.log('Resultado Push:', resultado);
 
     statusEl.className = "text-xs font-bold text-emerald-400";
     statusEl.innerText = "¡Anuncio transmitido con éxito!";
@@ -224,6 +235,7 @@ async function enviarAnuncioGlobal() {
 
     setTimeout(() => { statusEl.innerText = ''; }, 4000);
   } catch (err) {
+    console.error("Error al transmitir anuncio:", err);
     statusEl.className = "text-xs font-bold text-rose-400";
     statusEl.innerText = "Error al transmitir el anuncio.";
   }
