@@ -205,35 +205,19 @@ async function enviarAnuncioGlobal() {
   }
 
   statusEl.className = "text-xs font-bold text-orange-400";
-  statusEl.innerText = "Transmitiendo anuncio y push...";
+  statusEl.innerText = "Transmitiendo anuncio...";
 
   try {
-    // 1. Guardar en Supabase para usuarios con la app abierta
     const { error } = await supabaseClient
       .from('anuncios')
       .insert([{ titulo, mensaje, destinatario, created_at: new Date() }]);
 
     if (error) {
-      console.warn("Tabla de anuncios con error:", error.message);
+      throw error;
     }
 
-    // 2. Enviar Notificación Push mediante OneSignal con la clave correcta "key os_v2..."
-    await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "key os_v2_app_tc73dgkrsbgfde5qft73chdz46xsmrzhj6jenx47pypur6doqhfyn3sfg7khpj75zsqpfbxx6tprthtcdppz7ha4l6euc4d2xcf2apy"
-      },
-      body: JSON.stringify({
-        app_id: "98bfb199-5190-4c51-93b0-2cffb11c79e7",
-        included_segments: ["All"],
-        headings: { "es": titulo },
-        contents: { "es": mensaje }
-      })
-    });
-
     statusEl.className = "text-xs font-bold text-emerald-400";
-    statusEl.innerText = "¡Anuncio y notificación push enviados!";
+    statusEl.innerText = "¡Anuncio transmitido con éxito!";
     
     document.getElementById('anuncio-titulo').value = '';
     document.getElementById('anuncio-mensaje').value = '';
