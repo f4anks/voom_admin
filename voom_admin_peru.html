@@ -32,11 +32,11 @@
 
     <div class="flex items-center space-x-4">
       <div class="text-right">
-        <span id="admin-user" class="text-xs font-black text-slate-200 block">Verificando sesión...</span>
-        <span class="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">● Sistema Operativo</span>
+        <span id="admin-user" class="text-xs font-black text-slate-200 block">Administrador</span>
+        <span class="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">● En línea</span>
       </div>
-      <button onclick="cerrarSesionAdmin()" class="bg-slate-700 hover:bg-rose-600/20 text-slate-300 hover:text-rose-400 font-bold text-xs px-4 py-2.5 rounded-xl transition-all border border-slate-600">
-        Salir
+      <button onclick="cargarDatosAdmin()" class="bg-slate-700 hover:bg-orange-600/20 text-slate-300 hover:text-orange-400 font-bold text-xs px-4 py-2.5 rounded-xl transition-all border border-slate-600">
+        Recargar 🔄
       </button>
     </div>
   </header>
@@ -47,11 +47,11 @@
     <!-- Tarjetas de Resumen / Estadísticas -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="bg-slate-800/50 border border-slate-700/80 p-6 rounded-3xl shadow-xl">
-        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Viajes Activos Hoy</span>
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Viajes Totales / Activos</span>
         <span id="stat-viajes" class="text-3xl font-black text-white mt-2 block">0</span>
       </div>
       <div class="bg-slate-800/50 border border-slate-700/80 p-6 rounded-3xl shadow-xl">
-        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Conductores Conectados</span>
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Conductores Registrados</span>
         <span id="stat-conductores" class="text-3xl font-black text-orange-400 mt-2 block">0</span>
       </div>
       <div class="bg-slate-800/50 border border-slate-700/80 p-6 rounded-3xl shadow-xl">
@@ -63,26 +63,24 @@
     <!-- Sección de Monitoreo / Solicitudes Recientes -->
     <div class="bg-slate-800/50 border border-slate-700/80 rounded-3xl p-6 shadow-xl space-y-4">
       <div class="flex items-center justify-between pb-4 border-b border-slate-700/80">
-        <h2 class="text-base font-black text-white tracking-tight uppercase">Solicitudes y Monitoreo en Vivo</h2>
-        <button onclick="cargarDatosAdmin()" class="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-orange-500/20">
-          Actualizar Datos 🔄
-        </button>
+        <h2 class="text-base font-black text-white tracking-tight uppercase">Monitoreo de Solicitudes</h2>
+        <span class="text-xs text-slate-400 font-semibold">Sincronización en tiempo real</span>
       </div>
 
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs text-slate-300">
           <thead class="bg-slate-900/50 uppercase text-[10px] text-slate-400 tracking-wider">
             <tr>
-              <th class="p-4 rounded-l-xl">ID Viaje</th>
+              <th class="p-4 rounded-l-xl">ID / Fecha</th>
               <th class="p-4">Pasajero</th>
-              <th class="p-4">Origen / Destino</th>
+              <th class="p-4">Ruta (Origen ➔ Destino)</th>
               <th class="p-4">Estado</th>
-              <th class="p-4 rounded-r-xl text-right">Acciones</th>
+              <th class="p-4 rounded-r-xl text-right">Monto</th>
             </tr>
           </thead>
           <tbody id="tabla-viajes-body" class="divide-y divide-slate-700/50">
             <tr>
-              <td colspan="5" class="p-6 text-center text-slate-500">Cargando registros del sistema...</td>
+              <td colspan="5" class="p-6 text-center text-slate-500">Cargando registros de Supabase...</td>
             </tr>
           </tbody>
         </table>
@@ -91,18 +89,71 @@
 
   </main>
 
-  <!-- Script de Conexión y Lógica Administrativa -->
+  <!-- Lógica de JavaScript y Supabase -->
   <script>
-    // Inicialización o lógica conectada a Supabase para administración
+    // Configura aquí tus credenciales de Supabase (las mismas que usa tu app Voom)
+    const SUPABASE_URL = 'https://tu-proyecto.supabase.co';
+    const SUPABASE_ANON_KEY = 'tu-clave-anon';
+    
+    // Inicializar cliente de Supabase
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     async function cargarDatosAdmin() {
-      console.log("Cargando datos administrativos...");
-      // Aquí puedes integrar tus consultas directas a las tablas de Supabase
+      try {
+        const tbody = document.getElementById('tabla-viajes-body');
+        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">Actualizando datos...</td></tr>`;
+
+        // 1. Cargar Viajes
+        const { data: viajes, error: errViajes } = await _supabase
+          .from('viajes') // Nombre de tu tabla de viajes en Supabase
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(15);
+
+        if (errViajes) throw errViajes;
+
+        // Actualizar contador de viajes
+        document.getElementById('stat-viajes').innerText = viajes ? viajes.length : 0;
+
+        if (!viajes || viajes.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500">No hay solicitudes registradas aún.</td></tr>`;
+        } else {
+          tbody.innerHTML = '';
+          viajes.forEach(v => {
+            tbody.innerHTML += `
+              <tr class="hover:bg-slate-700/30 transition-colors">
+                <td class="p-4 font-mono text-[11px] text-slate-400">#${v.id ? v.id.toString().slice(0,6) : 'S/N'}</td>
+                <td class="p-4 font-bold text-white">${v.pasajero_nombre || 'Pasajero Voom'}</td>
+                <td class="p-4">
+                  <div class="text-slate-200 font-semibold">📍 ${v.origen || 'Origen'}</div>
+                  <div class="text-slate-400 text-[11px]">🏁 ${v.destino || 'Destino'}</div>
+                </td>
+                <td class="p-4">
+                  <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                    ${v.estado || 'Pendiente'}
+                  </span>
+                </td>
+                <td class="p-4 text-right font-black text-emerald-400 text-sm">$${v.precio || '0.00'}</td>
+              </tr>
+            `;
+          });
+        }
+
+        // 2. Contar Conductores (Ajusta el nombre de tu tabla si difiere)
+        const { count: countCond } = await _supabase.from('conductores').select('*', { count: 'exact', head: true });
+        document.getElementById('stat-conductores').innerText = countCond || 0;
+
+        // 3. Contar Pasajeros (Ajusta el nombre de tu tabla si difiere)
+        const { count: countPas } = await _supabase.from('pasajeros').select('*', { count: 'exact', head: true });
+        document.getElementById('stat-pasajeros').innerText = countPas || 0;
+
+      } catch (error) {
+        console.error("Error al cargar datos administrativos:", error);
+        document.getElementById('tabla-viajes-body').innerHTML = `<tr><td colspan="5" class="p-6 text-center text-rose-400">Error al conectar con la base de datos. Verifica tus credenciales.</td></tr>`;
+      }
     }
 
-    function cerrarSesionAdmin() {
-      window.location.href = "./index.html";
-    }
-
+    // Cargar datos automáticamente al abrir la página
     window.addEventListener('DOMContentLoaded', () => {
       cargarDatosAdmin();
     });
