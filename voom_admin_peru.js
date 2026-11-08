@@ -205,19 +205,38 @@ async function enviarAnuncioGlobal() {
   }
 
   statusEl.className = "text-xs font-bold text-orange-400";
-  statusEl.innerText = "Transmitiendo anuncio...";
+  statusEl.innerText = "Transmitiendo anuncio y push...";
 
   try {
+    // 1. Guardar en Supabase (para los usuarios que tienen la app abierta)
     const { error } = await supabaseClient
       .from('anuncios')
       .insert([{ titulo, mensaje, destinatario, created_at: new Date() }]);
 
     if (error) {
-      console.warn("Tabla de anuncios no detectada o con error:", error.message);
+      console.warn("Error al insertar en anuncios:", error.message);
     }
 
+    // 2. Enviar la Notificación Push por OneSignal (para los usuarios con la app cerrada)
+    await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Basic TU_REST_API_KEY_DE_ONESIGNAL" // Reemplaza esto con tu REST API Key de OneSignal
+      },
+      body: JSON.stringify({
+        app_id: "98bfb199-5190-4c51-93b0-2cffb11c79e7",
+        included_segments: destinatario === 'todos' ? ["All"] : ["Subscribed Users"],
+        filters: destinatario !== 'todos' ? [
+          { field: "tag", key: "rol", relation: "=", value: destinatario === 'pasajeros' ? 'pasajero' : 'conductor' }
+        ] : undefined,
+        headings: { "es": titulo },
+        contents: { "es": mensaje }
+      })
+    });
+
     statusEl.className = "text-xs font-bold text-emerald-400";
-    statusEl.innerText = "¡Anuncio transmitido con éxito!";
+    statusEl.innerText = "¡Anuncio y notificación push enviados!";
     
     document.getElementById('anuncio-titulo').value = '';
     document.getElementById('anuncio-mensaje').value = '';
@@ -225,7 +244,7 @@ async function enviarAnuncioGlobal() {
     setTimeout(() => { statusEl.innerText = ''; }, 4000);
   } catch (err) {
     statusEl.className = "text-xs font-bold text-rose-400";
-    statusEl.innerText = "Error al transmitir el anuncio.";
+    statusEl.innerText = "Error al enviar la notificación.";
   }
 }
 
