@@ -229,6 +229,7 @@ async function enviarAnuncioGlobal() {
   }
 }
 
+// Configuración completa en tiempo real para perfiles y anuncios
 function activarTiempoReal() {
   supabaseClient
     .channel('cambios-admin-peru')
@@ -237,6 +238,13 @@ function activarTiempoReal() {
       { event: '*', schema: 'public', table: 'perfiles' },
       () => {
         cargarConductores();
+      }
+    )
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'anuncios' },
+      (payload) => {
+        console.log('Nuevo anuncio detectado en tiempo real:', payload.new);
       }
     )
     .subscribe();
