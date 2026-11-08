@@ -208,28 +208,33 @@ async function enviarAnuncioGlobal() {
   statusEl.innerText = "Transmitiendo anuncio y push...";
 
   try {
-    // 1. Guardar en Supabase (para los usuarios que tienen la app abierta)
+    // 1. Guardar en Supabase para usuarios con la app abierta
     const { error } = await supabaseClient
       .from('anuncios')
       .insert([{ titulo, mensaje, destinatario, created_at: new Date() }]);
 
     if (error) {
-      console.warn("Error al insertar en anuncios:", error.message);
+      console.warn("Tabla de anuncios con error:", error.message);
     }
 
-    // 2. Enviar la Notificación Push por OneSignal (para los usuarios con la app cerrada)
+    // 2. Enviar Notificación Push mediante OneSignal con la REST API Key nueva
+    let filtroTags = undefined;
+    if (destinatario === 'pasajeros') {
+      filtroTags = [{ field: "tag", key: "rol", relation: "=", value: "pasajero" }];
+    } else if (destinatario === 'conductores') {
+      filtroTags = [{ field: "tag", key: "rol", relation: "=", value: "conductor" }];
+    }
+
     await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Basic TU_REST_API_KEY_DE_ONESIGNAL" // Reemplaza esto con tu REST API Key de OneSignal
+        "Authorization": "Basic os_v2_app_tc73dgkrsbgfde5qft73chdz46xsmrzhj6jenx47pypur6doqhfyn3sfg7khpj75zsqpfbxx6tprthtcdppz7ha4l6euc4d2xcf2apy"
       },
       body: JSON.stringify({
         app_id: "98bfb199-5190-4c51-93b0-2cffb11c79e7",
         included_segments: destinatario === 'todos' ? ["All"] : ["Subscribed Users"],
-        filters: destinatario !== 'todos' ? [
-          { field: "tag", key: "rol", relation: "=", value: destinatario === 'pasajeros' ? 'pasajero' : 'conductor' }
-        ] : undefined,
+        filters: filtroTags,
         headings: { "es": titulo },
         contents: { "es": mensaje }
       })
@@ -244,11 +249,11 @@ async function enviarAnuncioGlobal() {
     setTimeout(() => { statusEl.innerText = ''; }, 4000);
   } catch (err) {
     statusEl.className = "text-xs font-bold text-rose-400";
-    statusEl.innerText = "Error al enviar la notificación.";
+    statusEl.innerText = "Error al transmitir el anuncio.";
   }
 }
 
-// Configuración completa en tiempo real para perfiles y anuncios
+// Configuración en tiempo real para perfiles y anuncios
 function activarTiempoReal() {
   supabaseClient
     .channel('cambios-admin-peru')
