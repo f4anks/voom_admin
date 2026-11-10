@@ -177,7 +177,7 @@ function verDocumentos(idConductor) {
   cuerpo.innerHTML = docs.map(d => `
     <div class="bg-slate-800 p-3 rounded-2xl border border-slate-700 text-center">
       <p class="text-xs font-bold text-slate-300 mb-2">${d.titulo}</p>
-      {d.url 
+      ${d.url 
         ? `<a href="${d.url}" target="_blank"><img src="${d.url}" class="w-full h-36 object-cover rounded-xl border border-slate-700 hover:opacity-90 transition-all" alt="${d.titulo}" /></a>` 
         : '<div class="h-36 flex items-center justify-center bg-slate-900 text-xs text-slate-500 font-medium rounded-xl">Sin fotografía cargada</div>'}
     </div>
@@ -192,7 +192,7 @@ function cerrarModalDocs() {
   if (modal) modal.classList.add('hidden');
 }
 
-// FUNCIÓN DE ENVÍO DE ANUNCIOS Y PUSH (Conectada al botón del HTML)
+// Función de Envío de Anuncios Universales (App Abierta + App Cerrada vía OneSignal)
 async function enviarAnuncioGlobal() {
   const elTitulo = document.getElementById('anuncio-titulo');
   const elMensaje = document.getElementById('anuncio-mensaje');
@@ -213,18 +213,18 @@ async function enviarAnuncioGlobal() {
 
   if (statusEl) {
     statusEl.className = "text-xs font-bold text-orange-400";
-    statusEl.innerText = "Transmitiendo anuncio...";
+    statusEl.innerText = "Transmitiendo anuncio universal...";
   }
 
   try {
-    // 1. Guardar en Supabase (para tiempo real si la app está abierta)
+    // 1. Guardar en Supabase para lectura en tiempo real (app abierta)
     const { error: dbError } = await supabaseClient
       .from('anuncios')
       .insert([{ titulo, mensaje, destinatario: 'todos', created_at: new Date() }]);
 
     if (dbError) throw dbError;
 
-    // 2. Invocar Edge Function para disparar Web Push a través de OneSignal (app cerrada)
+    // 2. Invocar Edge Function para despachar notificación push universal vía OneSignal (app cerrada)
     const response = await fetch('https://gklquvthucityzgcamao.supabase.co/functions/v1/enviar-push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -236,7 +236,7 @@ async function enviarAnuncioGlobal() {
 
     if (statusEl) {
       statusEl.className = "text-xs font-bold text-emerald-400";
-      statusEl.innerText = "¡Anuncio transmitido con éxito!";
+      statusEl.innerText = "¡Anuncio transmitido con éxito a toda la red!";
     }
     
     elTitulo.value = '';
@@ -255,7 +255,7 @@ async function enviarAnuncioGlobal() {
   }
 }
 
-// Configuración en tiempo real para perfiles y anuncios
+// Configuración de canales en tiempo real para perfiles y anuncios
 function activarTiempoReal() {
   supabaseClient
     .channel('cambios-admin-peru')
@@ -283,5 +283,5 @@ async function logoutAdmin() {
   window.location.href = 'index.html';
 }
 
-// Exponer explícitamente al ámbito global
+// Exponer la función de anuncios globalmente para el evento onclick del botón
 window.enviarAnuncioGlobal = enviarAnuncioGlobal;
