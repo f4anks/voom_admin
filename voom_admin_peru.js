@@ -192,54 +192,148 @@ function cerrarModalDocs() {
   if (modal) modal.classList.add('hidden');
 }
 
-async function enviarAnuncioGlobal() {
-  const titulo = document.getElementById('anuncio-titulo').value.trim();
-  const mensaje = document.getElementById('anuncio-mensaje').value.trim();
-  const destinatario = document.getElementById('anuncio-destinatario').value;
-  const statusEl = document.getElementById('anuncio-status');
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Voom Admin - Perú</title>
 
-  if (!titulo || !mensaje) {
-    statusEl.className = "text-xs font-bold text-rose-400";
-    statusEl.innerText = "Por favor completa el título y el mensaje.";
-    return;
-  }
+  <!-- Metadatos PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Voom Admin Perú">
 
-  statusEl.className = "text-xs font-bold text-orange-400";
-  statusEl.innerText = "Transmitiendo anuncio...";
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  try {
-    // 1. Guardar en la base de datos (para app abierta en tiempo real)
-    const { error: dbError } = await supabaseClient
-      .from('anuncios')
-      .insert([{ titulo, mensaje, destinatario, created_at: new Date() }]);
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
 
-    if (dbError) throw dbError;
+  <!-- Header -->
+  <header class="bg-slate-800/80 backdrop-blur-md border-b border-slate-700/80 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 bg-gradient-to-tr from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center text-white font-black text-base shadow-lg shadow-orange-500/20">
+        🇵🇪
+      </div>
+      <div>
+        <span class="text-lg font-black text-white tracking-tight leading-tight block">Voom Perú</span>
+        <span class="text-[10px] text-orange-400 font-extrabold uppercase tracking-wider">Panel de Administración</span>
+      </div>
+    </div>
 
-    // 2. Invocar tu Edge Function para enviar la push a través de OneSignal (app cerrada)
-    const response = await fetch('https://gklquvthucityzgcamao.supabase.co/functions/v1/enviar-push', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ titulo, mensaje, destinatario })
-    });
+    <div class="flex items-center space-x-4">
+      <div class="text-right">
+        <span id="admin-email" class="text-xs font-black text-slate-200 block">Cargando...</span>
+        <span class="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">● Sesión Activa</span>
+      </div>
+      <button onclick="logoutAdmin()" class="bg-slate-700 hover:bg-rose-600/20 text-slate-300 hover:text-rose-400 font-bold text-xs px-4 py-2.5 rounded-xl transition-all border border-slate-600">
+        Cerrar Sesión
+      </button>
+    </div>
+  </header>
 
-    const resultado = await response.json();
-    console.log('Resultado Push:', resultado);
-
-    statusEl.className = "text-xs font-bold text-emerald-400";
-    statusEl.innerText = "¡Anuncio transmitido con éxito!";
+  <!-- Contenido Principal -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
     
-    document.getElementById('anuncio-titulo').value = '';
-    document.getElementById('anuncio-mensaje').value = '';
+    <!-- Tarjeta de Envío de Anuncios Globales por Destinatario -->
+    <div class="bg-slate-800/60 border border-slate-700/80 p-6 rounded-3xl shadow-xl space-y-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 bg-orange-500/20 text-orange-400 rounded-2xl flex items-center justify-center font-bold text-lg border border-orange-500/30">
+          📢
+        </div>
+        <div>
+          <h2 class="text-sm font-black text-white tracking-tight uppercase">Enviar Anuncio a la Red Voom Perú</h2>
+          <p class="text-xs font-semibold text-slate-400">Transmite un comunicado dirigido a pasajeros, conductores o ambos</p>
+        </div>
+      </div>
 
-    setTimeout(() => { statusEl.innerText = ''; }, 4000);
-  } catch (err) {
-    console.error("Error al transmitir anuncio:", err);
-    statusEl.className = "text-xs font-bold text-rose-400";
-    statusEl.innerText = "Error al transmitir el anuncio.";
-  }
-}
+      <div class="space-y-3">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Título del Anuncio</label>
+            <input type="text" id="anuncio-titulo" placeholder="Ej. ¡Tarifa especial este fin de semana en Lima!" class="w-full bg-slate-900/60 border border-slate-700 rounded-2xl px-4 py-3 text-xs font-semibold text-white focus:outline-none focus:border-orange-500 transition-all" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Dirigido a</label>
+            <select id="anuncio-destinatario" class="w-full bg-slate-900/60 border border-slate-700 rounded-2xl px-4 py-3 text-xs font-bold text-white focus:outline-none focus:border-orange-500 transition-all">
+              <option value="todos">🌐 Toda la Red (Todos)</option>
+              <option value="pasajeros">👤 Solo Pasajeros</option>
+              <option value="conductores">🚘 Solo Conductores</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Mensaje</label>
+          <textarea id="anuncio-mensaje" rows="3" placeholder="Escribe los detalles del comunicado..." class="w-full bg-slate-900/60 border border-slate-700 rounded-2xl px-4 py-3 text-xs font-semibold text-white focus:outline-none focus:border-orange-500 transition-all resize-none"></textarea>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <span id="anuncio-status" class="text-xs font-bold text-slate-400"></span>
+          <button onclick="enviarAnuncioGlobal()" class="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black px-6 py-3 rounded-2xl transition-all shadow-lg shadow-orange-500/20 text-xs tracking-wide active:scale-95">
+            Transmitir Anuncio 🚀
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pestañas de Filtros y Contadores -->
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-800/60 p-4 rounded-3xl border border-slate-700/80">
+      <div>
+        <h2 class="text-base font-black text-white tracking-tight">Conductores Registrados</h2>
+        <p class="text-xs font-semibold text-slate-400 mt-0.5">Aprueba solicitudes pendientes o gestiona accesos activos</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 bg-slate-900/60 p-1.5 rounded-2xl border border-slate-700/60 w-full md:w-auto">
+        <button onclick="filtrarConductores('todos')" id="tab-todos" class="px-4 py-2 text-xs font-bold rounded-xl bg-orange-500 text-white shadow-lg shadow-orange-500/20 transition-all">
+          Todos (<span id="count-todos">0</span>)
+        </button>
+        <button onclick="filtrarConductores('pendiente')" id="tab-pendiente" class="px-4 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-white transition-all">
+          Pendientes (<span id="count-pendiente">0</span>)
+        </button>
+        <button onclick="filtrarConductores('aprobado')" id="tab-aprobado" class="px-4 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-white transition-all">
+          Aprobados (<span id="count-aprobado">0</span>)
+        </button>
+        <button onclick="filtrarConductores('suspendido')" id="tab-suspendido" class="px-4 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-white transition-all">
+          Suspendidos (<span id="count-suspendido">0</span>)
+        </button>
+      </div>
+    </div>
+
+    <!-- Contenedor de Tarjetas de Conductores -->
+    <div id="contenedor-conductores" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="col-span-full text-center py-12 text-xs font-semibold text-slate-500">
+        Cargando base de datos de conductores...
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal para ver documentos y fotos -->
+  <div id="modal-docs" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 id="modal-titulo-conductor" class="text-sm font-black text-white">Documentos del Conductor</h3>
+        <button onclick="cerrarModalDocs()" class="text-slate-400 hover:text-white font-bold text-sm px-3 py-1 bg-slate-800 rounded-full transition-all">✕</button>
+      </div>
+      <div id="modal-cuerpo-docs" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Aquí se cargan dinámicamente las fotos -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Archivo de Lógica JavaScript en la misma carpeta -->
+  <script src="./voom_admin_peru.js"></script>
+</body>
+</html>
 
 // Configuración en tiempo real para perfiles y anuncios
 function activarTiempoReal() {
